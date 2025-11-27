@@ -3,7 +3,6 @@ from pypinyin import lazy_pinyin
 from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch
 from typing import List, Dict
-from heapq import heappush, heappop
 
 # 初始化 Flask 应用
 app = Flask(__name__)
@@ -14,7 +13,7 @@ tokenizer = AutoTokenizer.from_pretrained(model_name)
 model = AutoModelForCausalLM.from_pretrained(model_name)
 
 # 上下文存储
-user_context = [" "]
+user_context = ["下面的内容主题多样并且没有标点"]
 
 
 # 按键转拼音
@@ -90,14 +89,13 @@ def beam_search_generate(
                         ),
                     )
                     new_remaining_pinyin = remaining_pinyin[len(token_pinyin[0]) :]
-                    heappush(
+                    add_to_beam(
                         next_beam,
-                        (
-                            new_prob,
-                            new_context,
-                            new_remaining_pinyin,
-                            (token_tail, token_tail_prob),
-                        ),
+                        new_prob,
+                        new_context,
+                        new_remaining_pinyin,
+                        token_tail,
+                        token_tail_prob,
                     )
                 continue
 
@@ -127,14 +125,13 @@ def beam_search_generate(
                 token_pinyin = lazy_pinyin(token[0])
                 if remaining_pinyin.startswith(token_pinyin[0]):
                     new_remaining_pinyin = remaining_pinyin[len(token_pinyin[0]) :]
-                    heappush(
+                    add_to_beam(
                         next_beam,
-                        (
-                            new_prob,
-                            new_context,
-                            new_remaining_pinyin,
-                            (new_token_tail, token_prob),
-                        ),
+                        new_prob,
+                        new_context,
+                        new_remaining_pinyin,
+                        new_token_tail,
+                        token_prob,
                     )
 
         # 按概率排序并截取 Beam Width 个最优结果
@@ -153,6 +150,39 @@ def beam_search_generate(
 
 def commit(text: str):
     user_context.append(text)
+
+
+def add_to_beam(
+    next_beam, new_prob, new_context, new_remaining_pinyin, new_token_tail, token_prob
+):
+    """
+    将新路径添加到 Beam 中，检查是否存在相同的 context，
+    如果存在且新路径的概率更大，则覆盖旧路径。
+    如果存在 tail 的选项，跳过，不覆盖。
+    如果输入有 tail，也不覆盖。
+    """
+    if not (new_token_tail):
+        for i, (
+            existing_prob,
+            existing_context,
+            existing_remaining_pinyin,
+            (existing_token_tail, _),
+        ) in enumerate(next_beam):
+            if existing_context == new_context:
+                if existing_token_tail:  # 如果存在 tail，跳过
+                    return
+                if new_prob > existing_prob:  # 如果新路径的概率更大，替换
+                    next_beam[i] = (
+                        new_prob,
+                        new_context,
+                        new_remaining_pinyin,
+                        (new_token_tail, token_prob),
+                    )
+                return
+
+    next_beam.append(
+        (new_prob, new_context, new_remaining_pinyin, (new_token_tail, token_prob))
+    )
 
 
 # API: 获取候选词
