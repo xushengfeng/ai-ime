@@ -14,7 +14,8 @@ tokenizer = AutoTokenizer.from_pretrained(model_name)
 model = AutoModelForCausalLM.from_pretrained(model_name)
 
 # 上下文存储
-user_context = [' ']
+user_context = [" "]
+
 
 # 按键转拼音
 def keys_to_pinyin(keys: str) -> str:
@@ -22,18 +23,24 @@ def keys_to_pinyin(keys: str) -> str:
     # 比如双拼、模糊
     return keys
 
+
 # 根据拼音筛选候选词
-def filter_candidates_by_pinyin(candidates: List[Dict[str, float]], pinyin_input: str) -> List[Dict[str, float]]:
+def filter_candidates_by_pinyin(
+    candidates: List[Dict[str, float]], pinyin_input: str
+) -> List[Dict[str, float]]:
     filtered_candidates = []
     for candidate in candidates:
         word = candidate["word"]
-        word_pinyin = ''.join(lazy_pinyin(word))
+        word_pinyin = "".join(lazy_pinyin(word))
         if pinyin_input in word_pinyin:
             filtered_candidates.append(candidate)
     return filtered_candidates
 
+
 # 使用 Beam Search 生成候选词，拼音拆分基于候选词
-def beam_search_generate(pinyin_input: str, beam_width: int = 8, top_k: int = 10) -> List[Dict[str, float]]:
+def beam_search_generate(
+    pinyin_input: str, beam_width: int = 8, top_k: int = 10
+) -> List[Dict[str, float]]:
     """
     使用 Beam Search 生成候选词，逐步匹配拼音。
 
@@ -42,22 +49,27 @@ def beam_search_generate(pinyin_input: str, beam_width: int = 8, top_k: int = 10
     :param top_k: 最终返回的候选词数量
     :return: 候选词列表
     """
-    prompt = ''.join(user_context)
+    prompt = "".join(user_context)
     inputs = tokenizer(prompt, return_tensors="pt")
 
     # 初始化 Beam Search 队列
-    beam = [(1.0, '', [], pinyin_input, ("", 1.0))]  # (prob, context, tokens, remaining_pinyin, (token_tail, token_tail_prob))
+    beam = [
+        (1.0, "", [], pinyin_input, ("", 1.0))
+    ]  # (prob, context, tokens, remaining_pinyin, (token_tail, token_tail_prob))
 
     final_candidates = []
 
     while beam:
         next_beam = []
-        for prob, context, tokens, remaining_pinyin, (token_tail, token_tail_prob) in beam:
+        for prob, context, tokens, remaining_pinyin, (
+            token_tail,
+            token_tail_prob,
+        ) in beam:
             if not remaining_pinyin:  # 如果拼音已经全部匹配完
                 final_candidates.append((prob, tokens))
                 continue
 
-            print(context,token_tail,prob)
+            print(context, token_tail, prob)
             if token_tail:  # 如果有未处理的 token_tail
                 token = token_tail[0]  # 取出 token_tail 的第一个字
                 token_tail = token_tail[1:]  # 更新 token_tail
@@ -68,18 +80,37 @@ def beam_search_generate(pinyin_input: str, beam_width: int = 8, top_k: int = 10
                 # 检查拼音匹配
                 token_pinyin = lazy_pinyin(token)
                 if remaining_pinyin.startswith(token_pinyin[0]):
-                    print(token, new_prob, (new_prob, new_context, new_tokens, new_remaining_pinyin, (token_tail, token_tail_prob)))
-                    new_remaining_pinyin = remaining_pinyin[len(token_pinyin[0]):]
-                    heappush(next_beam, (new_prob, new_context, new_tokens, new_remaining_pinyin, (token_tail, token_tail_prob)))
+                    print(
+                        token,
+                        new_prob,
+                        (
+                            new_prob,
+                            new_context,
+                            new_tokens,
+                            new_remaining_pinyin,
+                            (token_tail, token_tail_prob),
+                        ),
+                    )
+                    new_remaining_pinyin = remaining_pinyin[len(token_pinyin[0]) :]
+                    heappush(
+                        next_beam,
+                        (
+                            new_prob,
+                            new_context,
+                            new_tokens,
+                            new_remaining_pinyin,
+                            (token_tail, token_tail_prob),
+                        ),
+                    )
                 continue
 
-            inputs = tokenizer(prompt+context, return_tensors="pt")
+            inputs = tokenizer(prompt + context, return_tensors="pt")
             with torch.no_grad():
                 outputs = model(**inputs)
                 logits = outputs.logits[:, -1, :]
 
             probabilities = torch.softmax(logits, dim=-1)
-            tk=1000
+            tk = 1000
             top_probs, top_indices = torch.topk(probabilities, tk)
 
             for i in range(tk):
@@ -94,9 +125,18 @@ def beam_search_generate(pinyin_input: str, beam_width: int = 8, top_k: int = 10
                 # 检查拼音匹配
                 token_pinyin = lazy_pinyin(token[0])
                 if remaining_pinyin.startswith(token_pinyin[0]):
-                    print(token,token_prob)
-                    new_remaining_pinyin = remaining_pinyin[len(token_pinyin[0]):]
-                    heappush(next_beam, (new_prob, new_context, new_tokens, new_remaining_pinyin, (new_token_tail, token_prob)))
+                    print(token, token_prob)
+                    new_remaining_pinyin = remaining_pinyin[len(token_pinyin[0]) :]
+                    heappush(
+                        next_beam,
+                        (
+                            new_prob,
+                            new_context,
+                            new_tokens,
+                            new_remaining_pinyin,
+                            (new_token_tail, token_prob),
+                        ),
+                    )
 
         # 按概率排序并截取 Beam Width 个最优结果
         next_beam.sort(key=lambda x: x[0], reverse=True)  # 按概率从高到低排序
@@ -105,31 +145,34 @@ def beam_search_generate(pinyin_input: str, beam_width: int = 8, top_k: int = 10
     # 提取最终候选词
     candidates = []
     for prob, tokens in final_candidates:
-        candidates.append({"word": ''.join(tokens), "score": prob})
+        candidates.append({"word": "".join(tokens), "score": prob})
 
     # 按得分排序并返回 Top-K
     candidates.sort(key=lambda x: x["score"], reverse=True)
     return candidates[:top_k]
 
-def commit(text:str):
+
+def commit(text: str):
     user_context.append(text)
 
+
 # API: 获取候选词
-@app.route('/candidates', methods=['POST'])
+@app.route("/candidates", methods=["POST"])
 def get_candidates() -> Dict[str, List[Dict[str, float]]]:
     data = request.json
-    keys:str = data.get('keys', "")
+    keys: str = data.get("keys", "")
 
     pinyin_input = keys_to_pinyin(keys)
     candidates = beam_search_generate(pinyin_input)
 
     return jsonify({"candidates": candidates})
 
+
 # API: 提交文字
-@app.route('/commit', methods=['POST'])
+@app.route("/commit", methods=["POST"])
 def commit_text() -> Dict[str, List[str]]:
     data = request.json
-    text = data.get('text', '')
+    text = data.get("text", "")
 
     if not text:
         return jsonify({"error": "No text provided"}), 400
@@ -138,5 +181,6 @@ def commit_text() -> Dict[str, List[str]]:
 
     return jsonify({"message": "Text committed successfully", "context": user_context})
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)

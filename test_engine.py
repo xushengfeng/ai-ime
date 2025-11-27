@@ -1,7 +1,8 @@
-from main import keys_to_pinyin, beam_search_generate,commit
+from main import keys_to_pinyin, beam_search_generate, commit
 from pypinyin import lazy_pinyin
 
 from typing import List
+
 
 def test_text_offset(test_text: str):
     """
@@ -12,7 +13,7 @@ def test_text_offset(test_text: str):
     print(f"测试文本: {test_text}")
 
     # 转换为拼音
-    pinyin_input = keys_to_pinyin(''.join(lazy_pinyin(test_text)))
+    pinyin_input = keys_to_pinyin("".join(lazy_pinyin(test_text)))
     print(f"转换为拼音: {pinyin_input}")
 
     # 调用补全引擎生成候选词
@@ -22,14 +23,19 @@ def test_text_offset(test_text: str):
         print(f"{idx}: {candidate}")
 
     # 计算偏移量
-    offsets = [idx for idx, candidate in enumerate(candidates) if candidate['word'] == test_text]
+    offsets = [
+        idx
+        for idx, candidate in enumerate(candidates)
+        if candidate["word"] == test_text
+    ]
     if offsets:
-        print(f"文本 \"{test_text}\" 在候选中的偏移量: {offsets[0]}")
+        print(f'文本 "{test_text}" 在候选中的偏移量: {offsets[0]}')
     else:
-        print(f"文本 \"{test_text}\" 不在候选中")
+        print(f'文本 "{test_text}" 不在候选中')
+
 
 if __name__ == "__main__":
     # 示例测试
-    commit('测试补全引擎')
+    commit("测试补全引擎")
     test_text = "测试成功"
     test_text_offset(test_text)
