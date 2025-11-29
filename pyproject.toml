@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "flask>=3.1.2",
+    "py-spy>=0.4.1",
     "pypinyin>=0.55.0",
     "torch>=2.9.0",
     "transformers>=4.57.3",
