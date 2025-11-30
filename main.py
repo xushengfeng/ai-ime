@@ -105,8 +105,14 @@ def beam_search_generate(
                         break
 
                 token_id = top_indices[0, i].item()
-                token = tokenizer.decode([token_id])
+                token: str = tokenizer.decode([token_id])
                 if len(token) < 1:
+                    continue
+                if token.startswith("\t"):
+                    continue
+                if token.startswith("\n"):
+                    continue
+                if token.startswith(" "):
                     continue
                 new_context = context + token
 
