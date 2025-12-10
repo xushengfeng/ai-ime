@@ -11,8 +11,21 @@ class Candidate(TypedDict):
     pinyin: List[str]
 
 
-BeamList = List[Tuple[float, str, str, List[Tuple[str, float, int]], List[str]]]
-
+BeamList = List[
+    Tuple[
+        float,  # prob
+        str,  # context
+        str,  # remaining_pinyin
+        List[  # 过程分词
+            Tuple[
+                str,  # 词
+                float,  # 概率
+                int,  # 索引
+            ]
+        ],
+        List[str],  # matched_pinyin
+    ]
+]
 model_name = "../Qwen2-0.5B-Instruct-GGUF/qwen2-0_5b-instruct-q4_0.gguf"
 print("加载模型", model_name)
 
