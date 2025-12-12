@@ -11,7 +11,9 @@ class PinyinAndKey(TypedDict):
     key: str
 
 
-PinyinL = List[PinyinAndKey]  # 之后会有多选
+PinyinL = List[  # 拆分后的序列
+    List[PinyinAndKey]  # 多选，比如模糊音，半个拼音等
+]
 Pinyin = List[str]
 
 
@@ -72,7 +74,9 @@ for token_id in range(llm.n_vocab()):
         for i in py2:
             pinyin_k.add(i)
 
-pinyin_k_l = sorted(list(pinyin_k), key=lambda x: len(x), reverse=True)
+pinyin_k_l = sorted(
+    list(filter(lambda x: len(x) > 1, pinyin_k)), key=lambda x: len(x), reverse=True
+) + ["a", "o", "e"]
 
 # 上下文存储
 pre_context = "下面的内容主题多样并且没有标点"
@@ -83,18 +87,22 @@ user_context = []
 def keys_to_pinyin(keys: str) -> PinyinL:
     # 示例：将按键直接映射为拼音（实际可根据需求扩展）
     # 比如双拼、模糊
-    l: List[PinyinAndKey] = []
+    l: PinyinL = []
     k = keys
     while len(k) > 0:
         has = False
         for i in pinyin_k_l:
             if k.startswith(i):
                 has = True
-                l.append(PinyinAndKey(key=i, py=i))
+                l.append([PinyinAndKey(key=i, py=i)])
                 k = k[len(i) :]
                 break
         if not has:
-            # todo
+            ll: List[PinyinAndKey] = []
+            for i in pinyin_k_l:
+                if i.startswith(k[0]):
+                    ll.append(PinyinAndKey(key=k[0], py=i))
+            l.append(ll)
             k = k[1:]
     print(l)
     return l
@@ -179,10 +187,10 @@ def beam_search_generate(
 
             bw = max_beam_w if run_count == 1 else min_beam_w
 
-            firstPinyin = remaining_pinyin[0].get("py")
-            ftokenid = first_pinyin_token.get(firstPinyin)
-            if ftokenid == None:
-                ftokenid = set()
+            ftokenid: Set[int] = set()
+            for firstPinyin in remaining_pinyin[0]:
+                s = first_pinyin_token.get(firstPinyin["py"]) or set()
+                ftokenid = ftokenid | s
 
             for i in range(top_indices.size):
                 token_prob = top_probs[i]
@@ -221,7 +229,7 @@ def beam_search_generate(
                     if len(remaining_pinyin) <= _i:
                         pyeq = False
                         break
-                    if remaining_pinyin[_i]["py"] != p:
+                    if p not in map(lambda x: x["py"], remaining_pinyin[_i]):
                         pyeq = False
                         break
                 if pyeq:
@@ -266,6 +274,8 @@ def beam_search_generate(
 
 
 def single_ci(pinyin_input: PinyinL, pre_str="") -> Result:
+    if not pinyin_input:
+        return {"candidates": []}
     prompt = get_context()
     pm = prompt + pre_str
     inputs = llm.tokenize(pm.encode())
@@ -280,10 +290,10 @@ def single_ci(pinyin_input: PinyinL, pre_str="") -> Result:
 
     top_probs, top_indices = get_top_k_logits_numpy(logits, tk)
 
-    firstPinyin = pinyin_input[0].get("py") if pinyin_input else ""
-    ftokenid = first_pinyin_token.get(firstPinyin)
-    if ftokenid == None:
-        ftokenid = set()
+    ftokenid: Set[int] = set()
+    for firstPinyin in pinyin_input[0]:
+        s = first_pinyin_token.get(firstPinyin["py"]) or set()
+        ftokenid = ftokenid | s
 
     c: List[Candidate] = []
 
@@ -316,12 +326,14 @@ def single_ci(pinyin_input: PinyinL, pre_str="") -> Result:
             if len(pinyin_input) <= _i:
                 pyeq = False
                 break
-            if pinyin_input[_i]["py"] != p:
+            if p not in map(lambda x: x["py"], pinyin_input[_i]):
                 pyeq = False
                 break
         if pyeq:
             if token != token_pinyin[0]:
-                rmpy = list(map(lambda x: x["key"], pinyin_input[len(token_pinyin) :]))
+                rmpy = list(
+                    map(lambda x: x[0]["key"], pinyin_input[len(token_pinyin) :])
+                )
                 c.append(
                     {
                         "pinyin": token_pinyin,
@@ -332,6 +344,8 @@ def single_ci(pinyin_input: PinyinL, pre_str="") -> Result:
                     }
                 )
     c.sort(key=lambda x: len(x["word"]), reverse=True)
+    if not c:
+        print("is empty")
     return {"candidates": c}
 
 
