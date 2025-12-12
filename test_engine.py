@@ -40,7 +40,7 @@ def test_text_offset(test_text: List[str]):
                 break
 
     ttt = time.time() - start_time
-    print(ttt, ttt / len(test_text))
+    print("偏移", offset, ttt, ttt / len(test_text))
 
 
 if __name__ == "__main__":
@@ -51,9 +51,20 @@ if __name__ == "__main__":
 
     clear_commit()
     test_text_offset(list(jieba.cut("聪明的输入法")))
+
+    clear_commit()
+    commit("小明是女的，")
+    c = single_ci(keys_to_pinyin("ta"))
+    print(c)
+
     clear_commit()
     test_text_offset(
         list(
-            "输入法到一定上下文长度后性能下降似乎是三十二这里进行测试这里需要很长的文字这样够吗要不再多一点确实如此不可接受试试使用缓存或者限制上下文"
+            jieba.cut(
+                "输入法到一定上下文长度后性能下降似乎是三十二这里进行测试这里需要很长的文字这样够吗要不再多一点确实如此不可接受试试使用缓存或者限制上下文"
+            )
         )
     )
+    commit("小明是女的，")
+    c = single_ci(keys_to_pinyin("ta"))
+    print(c)

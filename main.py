@@ -47,7 +47,7 @@ BeamList = List[
 model_name = "../Qwen2-0.5B-Instruct-GGUF/qwen2-0_5b-instruct-q4_0.gguf"
 print("加载模型", model_name)
 
-llm = Llama(model_path=model_name, logits_all=True)
+llm = Llama(model_path=model_name, logits_all=True, verbose=False)
 print("加载完成")
 
 print("创建拼音索引")
@@ -79,8 +79,10 @@ pinyin_k_l = sorted(
 ) + ["a", "o", "e"]
 
 # 上下文存储
-pre_context = "下面的内容主题多样并且没有标点"
+pre_context = "下面的内容主题多样"
 user_context = []
+
+to_run: List[int] = []
 
 
 # 按键转拼音
@@ -276,13 +278,11 @@ def beam_search_generate(
 def single_ci(pinyin_input: PinyinL, pre_str="") -> Result:
     if not pinyin_input or not pinyin_input[0]:
         return {"candidates": []}
-    prompt = get_context()
-    pm = prompt + pre_str
+    pm = pre_str
 
     devTime = time.time()
-    inputs = llm.tokenize(pm.encode())
+    inputs = to_run + llm.tokenize(pm.encode())
     devTimeTk = time.time()
-    llm.reset()
     llm.eval(inputs)
     devTimeRun = time.time()
 
@@ -353,7 +353,7 @@ def single_ci(pinyin_input: PinyinL, pre_str="") -> Result:
 
     print(
         "token长度",
-        len(inputs),
+        llm.n_tokens,
         "token耗时",
         devTimeTk - devTime,
         "运行耗时",
@@ -369,6 +369,10 @@ def single_ci(pinyin_input: PinyinL, pre_str="") -> Result:
 
 def commit(text: str):
     user_context.append(text)
+    global to_run
+    to_run = llm.tokenize(text.encode())
+    global llmState
+    llmState = llm.save_state()
 
 
 def get_context():
@@ -377,6 +381,10 @@ def get_context():
 
 def clear_commit():
     user_context.clear()
+    llm.reset()
+    to_run.clear()
+    global llmState
+    llmState = init_ctx()
 
 
 def add_to_beam(
@@ -412,5 +420,17 @@ def add_to_beam(
         next_beam.pop()
     return True
 
+
+def init_ctx():
+    prompt = get_context()
+    inputs = llm.tokenize(prompt.encode())
+    global to_run
+    to_run = inputs
+    llm.reset()
+    llm.eval(inputs)
+    return llm.save_state()
+
+
+llmState = init_ctx()
 
 print("初始化完毕")
