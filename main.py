@@ -85,6 +85,101 @@ user_context = []
 to_run: List[int] = []
 
 
+class FuzzyConfig:
+    def __init__(self):
+        # 声母模糊音
+        self.initial_fuzzy = {
+            "c": "ch",
+            "z": "zh",
+            "s": "sh",
+            # 'l': 'n',
+            # 'n': 'l',
+            # 'f': 'h',
+            # 'h': 'f',
+            # 'r': 'l',
+            # 'l': 'r',
+        }
+
+        # 韵母模糊音
+        self.final_fuzzy = {
+            "an": "ang",
+            "ang": "an",
+            "en": "eng",
+            "eng": "en",
+            "in": "ing",
+            "ing": "in",
+            "ian": "iang",
+            "iang": "ian",
+            "uan": "uang",
+            "uang": "uan",
+        }
+
+        # 是否启用模糊音
+        self.enabled = True
+
+
+# 创建全局模糊音配置实例
+fuzzy_config = FuzzyConfig()
+
+
+def generate_fuzzy_pinyin(pinyin: str) -> List[str]:
+    """生成模糊音变体"""
+    fuzzy_variants = set()
+
+    if not fuzzy_config.enabled:
+        return [pinyin]
+
+    initial = ""
+    final = ""
+
+    # 将拼音拆分为声母和韵母
+    initials = [
+        "zh",
+        "ch",
+        "sh",
+        "b",
+        "p",
+        "m",
+        "f",
+        "d",
+        "t",
+        "n",
+        "l",
+        "g",
+        "k",
+        "h",
+        "j",
+        "q",
+        "x",
+        "r",
+        "z",
+        "c",
+        "s",
+    ]
+
+    # 找到声母
+    for init in initials:
+        if pinyin.startswith(init):
+            initial = init
+            break
+
+    final = pinyin[len(initial) :]
+
+    for i in [initial] + (
+        [fuzzy_config.initial_fuzzy[initial]]
+        if initial in fuzzy_config.initial_fuzzy
+        else []
+    ):
+        for j in [final] + (
+            [fuzzy_config.final_fuzzy[final]]
+            if final in fuzzy_config.final_fuzzy
+            else []
+        ):
+            fuzzy_variants.add(i + j)
+
+    return list(fuzzy_variants)
+
+
 # 按键转拼音
 def keys_to_pinyin(keys: str) -> PinyinL:
     # 示例：将按键直接映射为拼音（实际可根据需求扩展）
@@ -96,7 +191,12 @@ def keys_to_pinyin(keys: str) -> PinyinL:
         for i in pinyin_k_l:
             if k.startswith(i):
                 has = True
-                l.append([PinyinAndKey(key=i, py=i)])
+                pinyin = i
+                pinyin_variants = generate_fuzzy_pinyin(pinyin)
+                py_list: List[PinyinAndKey] = []
+                for variant in pinyin_variants:
+                    py_list.append(PinyinAndKey(key=i, py=variant))
+                l.append(py_list)
                 k = k[len(i) :]
                 break
         if not has:
