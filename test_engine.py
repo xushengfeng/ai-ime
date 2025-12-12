@@ -1,9 +1,11 @@
 import time
+from typing import List
 from main import keys_to_pinyin, beam_search_generate, commit, clear_commit, single_ci
 from pypinyin import lazy_pinyin
+import jieba
 
 
-def test_text_offset(test_text: str):
+def test_text_offset(test_text: List[str]):
     """
     测试函数：将提供的文本转为拼音，调用补全引擎，计算文本在候选中的偏移量。
 
@@ -12,29 +14,30 @@ def test_text_offset(test_text: str):
     print(f"测试文本: {test_text}")
 
     offset = 0
-    src_t = test_text
-    t = ""
-    py = "".join(lazy_pinyin(src_t))
-
     start_time = time.time()
+    for src_t in test_text:
+        t = ""
+        py = "".join(lazy_pinyin(src_t))
 
-    while len(py) > 0:
-        pinyin_input = keys_to_pinyin(py)
-        candidates = single_ci(pinyin_input, pre_str=t)
-        has = False
+        while len(py) > 0:
+            pinyin_input = keys_to_pinyin(py)
+            candidates = single_ci(pinyin_input, pre_str=t)
+            has = False
 
-        for idx, candidate in enumerate(candidates["candidates"]):
-            if src_t.startswith(candidate["word"]):
-                has = True
-                src_t = src_t[len(candidate["word"]) :]
-                t = t + candidate["word"]
-                py = "".join(candidate["remainkeys"])
-                print(idx, candidate["word"])
-                offset = offset + idx
+            for idx, candidate in enumerate(candidates["candidates"]):
+                text = candidate["word"]
+                if src_t.startswith(text):
+                    has = True
+                    src_t = src_t[len(text) :]
+                    t = t + text
+                    py = "".join(candidate["remainkeys"])
+                    print(idx, text)
+                    offset = offset + idx
+                    commit(text)
+                    break
+            if has == False:
+                print("找不到", t)
                 break
-        if has == False:
-            print("找不到", t)
-            break
 
     ttt = time.time() - start_time
     print(ttt, ttt / len(test_text))
@@ -47,4 +50,10 @@ if __name__ == "__main__":
     # test_text_offset(test_text)
 
     clear_commit()
-    test_text_offset("聪明的输入法")
+    test_text_offset(list(jieba.cut("聪明的输入法")))
+    clear_commit()
+    test_text_offset(
+        list(
+            "输入法到一定上下文长度后性能下降似乎是三十二这里进行测试这里需要很长的文字这样够吗要不再多一点确实如此不可接受试试使用缓存或者限制上下文"
+        )
+    )
