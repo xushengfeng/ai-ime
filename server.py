@@ -10,9 +10,6 @@ from urllib.parse import unquote
 print("初始化网络服务器")
 app = Flask(__name__)
 
-# 添加一个全局变量存储用户上下文（假设这是你需要的）
-user_context = []
-
 auth = True
 
 
@@ -106,9 +103,7 @@ def commit_text_post() -> Dict[str, List[str]]:
     if not text:
         return jsonify({"error": "No text provided"}), 400  # type: ignore
 
-    commit(text)
-    # 更新用户上下文
-    user_context.append(text)
+    user_context = commit(text)
     print("".join(user_context)[-20:])
 
     return jsonify(
@@ -129,9 +124,7 @@ def commit_text_get() -> Dict[str, List[str]]:
     if not text:
         return jsonify({"error": "No text provided"}), 400  # type: ignore
 
-    commit(text)
-    # 更新用户上下文
-    user_context.append(text)
+    user_context = commit(text)
     print("".join(user_context)[-20:])
 
     return jsonify(
@@ -145,8 +138,6 @@ def commit_text_get() -> Dict[str, List[str]]:
 @app.route("/clear", methods=["GET"])
 @require_auth
 def clear_context_get() -> Dict[str, str]:
-    global user_context
-    user_context = []
     clear_commit()
     return jsonify({"message": "Context cleared successfully"})  # type: ignore
 
@@ -155,8 +146,6 @@ def clear_context_get() -> Dict[str, str]:
 @app.route("/clear", methods=["POST"])
 @require_auth
 def clear_context_post() -> Dict[str, str]:
-    global user_context
-    user_context = []
     clear_commit()
     return jsonify({"message": "Context cleared successfully"})  # type: ignore
 

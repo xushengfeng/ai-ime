@@ -151,6 +151,7 @@ def generate_fuzzy_pinyin(pinyin: str) -> List[str]:
 
 shuangpin_map = generate_shuang_pinyin(pinyin_k_l)
 
+
 # 按键转拼音
 def keys_to_pinyin(keys: str) -> PinyinL:
     # 示例：将按键直接映射为拼音（实际可根据需求扩展）
@@ -477,6 +478,7 @@ def commit(text: str):
     to_run = llm.tokenize(text.encode())
     global llmState
     llmState = llm.save_state()
+    return user_context
 
 
 def get_context():
