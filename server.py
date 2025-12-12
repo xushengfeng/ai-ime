@@ -41,9 +41,9 @@ def get_candidates_post() -> Dict[str, List[Dict[str, float]]]:
     pre_str: str = data.get("pre_str", "")  # type: ignore
 
     pinyin_input = keys_to_pinyin(keys)
-    candidates = single_ci(pinyin_input, pre_str=pre_str)
+    result = single_ci(pinyin_input, pre_str=pre_str)
 
-    return jsonify({"candidates": candidates})  # type: ignore
+    return jsonify(result)  # type: ignore
 
 
 # API: 获取候选词 - GET 方法
@@ -59,9 +59,9 @@ def get_candidates_get() -> Dict[str, List[Dict[str, float]]]:
     pre_str = unquote(pre_str)
 
     pinyin_input = keys_to_pinyin(keys)
-    candidates = single_ci(pinyin_input, pre_str=pre_str)
+    result = single_ci(pinyin_input, pre_str=pre_str)
 
-    return jsonify({"candidates": candidates})  # type: ignore
+    return jsonify(result)  # type: ignore
 
 
 # API: 获取长句 - POST 方法

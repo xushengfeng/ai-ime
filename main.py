@@ -1,3 +1,4 @@
+import string
 from pypinyin import lazy_pinyin
 from llama_cpp import Llama
 import numpy as np
@@ -19,6 +20,11 @@ class Candidate(TypedDict):
     score: float
     pinyin: Pinyin
     remainkeys: List[str]
+    preedit: str
+
+
+class Result(TypedDict):
+    candidates: List[Candidate]
 
 
 BeamList = List[
@@ -248,6 +254,7 @@ def beam_search_generate(
                 "score": float(prob),
                 "pinyin": matched_pinyin,
                 "remainkeys": [],
+                "preedit": " ".join(matched_pinyin),
             }
         )
 
@@ -258,7 +265,7 @@ def beam_search_generate(
     return candidates[:top_k]
 
 
-def single_ci(pinyin_input: PinyinL, pre_str="") -> List[Candidate]:
+def single_ci(pinyin_input: PinyinL, pre_str="") -> Result:
     prompt = get_context()
     pm = prompt + pre_str
     inputs = llm.tokenize(pm.encode())
@@ -314,18 +321,18 @@ def single_ci(pinyin_input: PinyinL, pre_str="") -> List[Candidate]:
                 break
         if pyeq:
             if token != token_pinyin[0]:
+                rmpy = list(map(lambda x: x["key"], pinyin_input[len(token_pinyin) :]))
                 c.append(
                     {
                         "pinyin": token_pinyin,
                         "score": float(token_prob),
                         "word": token,
-                        "remainkeys": list(
-                            map(lambda x: x["key"], pinyin_input[len(token_pinyin) :])
-                        ),
+                        "remainkeys": rmpy,
+                        "preedit": pre_str + " ".join(token_pinyin + rmpy),
                     }
                 )
     c.sort(key=lambda x: len(x["word"]), reverse=True)
-    return c
+    return {"candidates": c}
 
 
 def commit(text: str):

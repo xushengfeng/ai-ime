@@ -23,7 +23,7 @@ def test_text_offset(test_text: str):
         candidates = single_ci(pinyin_input, pre_str=t)
         has = False
 
-        for idx, candidate in enumerate(candidates):
+        for idx, candidate in enumerate(candidates["candidates"]):
             if src_t.startswith(candidate["word"]):
                 has = True
                 src_t = src_t[len(candidate["word"]) :]

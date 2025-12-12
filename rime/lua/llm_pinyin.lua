@@ -71,7 +71,7 @@ function translator.func(input, seg, env)
       local word = string.gsub(v['word'], "'", " ")
       local c = Candidate("normal", seg.start, seg._end, word, "")
       c.quality = 2
-      c.preedit = table.concat(v["pinyin"], "")
+      c.preedit = v["preedit"]
       yield(c)
     end
   end
