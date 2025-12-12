@@ -476,8 +476,6 @@ def commit(text: str):
     user_context.append(text)
     global to_run
     to_run = llm.tokenize(text.encode())
-    global llmState
-    llmState = llm.save_state()
     return user_context
 
 
@@ -489,8 +487,7 @@ def clear_commit():
     user_context.clear()
     llm.reset()
     to_run.clear()
-    global llmState
-    llmState = init_ctx()
+    init_ctx()
 
 
 def add_to_beam(
@@ -534,9 +531,8 @@ def init_ctx():
     to_run = inputs
     llm.reset()
     llm.eval(inputs)
-    return llm.save_state()
 
 
-llmState = init_ctx()
+init_ctx()
 
 print("初始化完毕")
