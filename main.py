@@ -1,6 +1,8 @@
+import math
 from pypinyin import lazy_pinyin
 from llama_cpp import Llama
 import numpy as np
+import threading
 
 from typing import List, Dict, Set, Tuple, TypedDict
 
@@ -47,10 +49,26 @@ BeamList = List[
         Pinyin,  # matched_pinyin
     ]
 ]
+
+
+class Debounce:
+    def __init__(self, delay: float, func):
+        self.delay = delay
+        self.func = func
+        self.timer = None
+
+    def reset(self):
+        if self.timer:
+            self.timer.cancel()
+
+        self.timer = threading.Timer(self.delay, lambda: self.func())
+        self.timer.start()
+
+
 model_name = "../Qwen2-0.5B-Instruct-GGUF/qwen2-0_5b-instruct-q4_0.gguf"
 print("加载模型", model_name)
 
-llm = Llama(model_path=model_name, logits_all=True, verbose=False)
+llm = Llama(model_path=model_name, logits_all=True, verbose=False, n_ctx=4096)
 print("加载完成")
 
 print("创建拼音索引")
@@ -86,7 +104,10 @@ pre_context = "下面的内容主题多样"
 user_context = []
 last_context_data = {"context": ""}
 
-to_run: List[int] = []
+max_count = 4000
+rm_count = min(max_count, 64, math.floor(max_count * 0.2))
+
+
 last_result: np.ndarray | None = None
 
 
@@ -389,6 +410,9 @@ def beam_search_generate(
 
     # 按得分排序并返回 Top-K
     candidates.sort(key=lambda x: x["score"], reverse=True)
+
+    trim_context.reset()
+
     return candidates[:top_k]
 
 
@@ -469,6 +493,8 @@ def single_ci(pinyin_input: PinyinL, pre_str="") -> Result:
         llm.n_tokens,
     )
 
+    trim_context.reset()
+
     if not c:
         print("is empty")
     return {"candidates": c}
@@ -497,12 +523,14 @@ def commit(text: str, update=False, new=True):
         return user_context
 
     user_context.append(new_text)
-    global to_run
     to_run = llm.tokenize(new_text.encode())
     llm.eval(to_run)
     global last_result
     logits_array = llm._scores[-1]
     last_result = np.array(logits_array)
+
+    trim_context.reset()
+
     return user_context
 
 
@@ -513,7 +541,6 @@ def get_context():
 def clear_commit():
     user_context.clear()
     llm.reset()
-    to_run.clear()
     global last_result
     last_result = None
     init_ctx()
@@ -553,11 +580,28 @@ def add_to_beam(
     return True
 
 
+def try_trim_context():
+    if llm.n_tokens < max_count:
+        return
+    old_tokens = llm.tokenize("".join(user_context).encode())
+    new_tokens = old_tokens[: max_count - rm_count]
+    llm.reset()
+    for t in new_tokens:
+        llm.eval([t])
+    print(llm.n_tokens)
+    user_context.clear()
+    user_context.append(llm.detokenize(new_tokens).decode())
+    global last_result
+    logits_array = llm._scores[-1]
+    last_result = np.array(logits_array)
+
+
+trim_context = Debounce(10, try_trim_context)
+
+
 def init_ctx():
     prompt = get_context()
     inputs = llm.tokenize(prompt.encode())
-    global to_run
-    to_run = inputs
     llm.reset()
     llm.eval(inputs)
     global last_result
