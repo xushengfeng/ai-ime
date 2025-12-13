@@ -4,9 +4,7 @@ llm 驱动的输入法。目前支持拼音。
 
 记录用户历史输入。让 llm 预测下一个词，再用拼音筛选。
 
-太小的模型预测不强，太大的模型性能不好。这里用了 qwen2-0.5b q4
-
-目前作为云输入，还没有与具体输入法引擎结合在一起。
+小型大模型 qwen2-0.5b q4，兼顾速度和联想能力，打字时速度和普通引擎基本无异
 
 ## 运行
 
@@ -30,49 +28,10 @@ git clone https://www.modelscope.cn/qwen/Qwen2-0.5B-Instruct-GGUF.git
 uv run server.py
 ```
 
-创建密钥，一定程度上防止被滥用或隐式泄露
+创建密钥，一定程度上防止被滥用或隐私泄露
 
 ```shell
 uv run key.py
-```
-
-可以发送按键让引擎分析
-
-```shell
-curl --request POST \
-  --url http://127.0.0.1:5000/candidates \
-  --header 'content-type: application/json' \
-  --header 'Authorization: Bearer your key' \
-  --data '{
-  "keys": "nihaoshijie"
-}'
-```
-
-返回
-
-```json
-{
-    "candidates": [
-        {
-            "pinyin": ["ni", "hao", "shi", "jie"],
-            "score": 1.1879427571978856e-13,
-            "word": "你好世界"
-        }
-    ]
-}
-```
-
-在长句中，只选择前面部分的词，就附带在`pre_str`
-
-选好词后，发送，将作为上下文记录
-
-```shell
-curl --request POST \
-  --url http://127.0.0.1:5000/commit \
-  --header 'content-type: application/json' \
-  --data '{
-  "text": "你好世界"
-}'
 ```
 
 ## 作为输入法
@@ -100,17 +59,52 @@ sudo luarocks install luasocket \
 
 ## 现状
 
-速度不可接受，组个短句需要数秒。
-
-但是，如果是让人在中途选词，每次击键反应可以在几十毫秒级别，还能接受。即使打了一大串，模型只推理下一个词而不是尝试组句，这样快很多。
+不支持长句输入，但输入一长串拼音后，可以中途选择来实现组句。
 
 支持模糊音，自然码双拼。
 
-现在使用 rime 可以一个词一个词输入，长句输入还不行。另外，输入太快会漏字母。
+输入太快可能会漏字母。
 
 没有保存数据的功能，也没有生词记录，所以服务器重启后会丢失记忆。
 
 ## 开发
+
+可以发送按键让引擎分析
+
+```shell
+curl --request POST \
+  --url http://127.0.0.1:5000/candidates \
+  --header 'content-type: application/json' \
+  --header 'Authorization: Bearer your key' \
+  --data '{
+  "keys": "nihaoshijie"
+}'
+```
+
+返回
+
+```json
+{
+    "candidates": [
+        {
+            "pinyin": ["ni", "hao", "shi", "jie"],
+            "score": 1.1879427571978856e-13,
+            "word": "你好世界"
+        }
+    ]
+}
+```
+
+选好词后，发送，将作为上下文记录
+
+```shell
+curl --request POST \
+  --url http://127.0.0.1:5000/commit \
+  --header 'content-type: application/json' \
+  --data '{
+  "text": "你好世界"
+}'
+```
 
 ### 仅测试
 
