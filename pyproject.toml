@@ -7,7 +7,7 @@ requires-python = ">=3.13"
 dependencies = [
     "flask>=3.1.2",
     "jieba>=0.42.1",
-    "llama-cpp-python>=0.3.2",
+    "llama-cpp-python>=0.3.16",
     "py-spy>=0.4.1",
     "pypinyin>=0.55.0",
     "torch>=2.9.0",
