@@ -1,6 +1,6 @@
 import time
 from typing import List
-from main import beam_search_generate, commit, clear_commit, single_ci
+from main import beam_search_generate, commit, clear_commit, single_ci, stop_all
 from pypinyin import lazy_pinyin
 import jieba
 
@@ -70,3 +70,6 @@ if __name__ == "__main__":
     commit("小明是女的，")
     c = single_ci(keys_to_pinyin("ta"))
     print(c["candidates"][:4])
+
+
+stop_all()

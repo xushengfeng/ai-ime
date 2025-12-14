@@ -1,7 +1,7 @@
 # 放在test文件夹后找不到模块，不知道怎么处理……
 
 from os import path
-from main import beam_search_generate, commit, clear_commit, single_ci
+from main import beam_search_generate, commit, clear_commit, single_ci, stop_all
 from pypinyin import lazy_pinyin
 
 from utils.keys_to_pinyin import keys_to_pinyin
@@ -43,3 +43,6 @@ if __name__ == "__main__":
             continue
 
     print("偏移", offset, "成功", perfect, count)
+
+
+stop_all()

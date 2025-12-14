@@ -55,6 +55,10 @@ class Debounce:
         self.timer = threading.Timer(self.delay, lambda: self.func())
         self.timer.start()
 
+    def cancel(self):
+        if self.timer:
+            self.timer.cancel()
+
 
 model_name = "../Qwen3-0.6B-GGUF/Qwen3-0.6B-IQ4_XS.gguf"
 print("加载模型", model_name)
@@ -488,6 +492,10 @@ def try_trim_context():
 
 
 trim_context = Debounce(10, try_trim_context)
+
+
+def stop_all():
+    trim_context.cancel()
 
 
 def init_ctx():
