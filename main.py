@@ -1,4 +1,5 @@
 import math
+from pickletools import pyint
 from llama_cpp import Llama
 import numpy as np
 import threading
@@ -6,7 +7,7 @@ import threading
 from typing import List, Dict, Set, Tuple, TypedDict
 
 from assets.pinyin.script.gen_zi_pinyin import load_pinyin
-from utils.keys_to_pinyin import PinyinL
+from utils.keys_to_pinyin import PinyinAndKey, PinyinL
 
 
 Pinyin = List[str]
@@ -92,6 +93,8 @@ for token_id in range(llm.n_vocab()):
 pre_context = "下面的内容主题多样"
 user_context = []
 last_context_data = {"context": ""}
+
+y用户词: Dict[int, Set[int]] = {}
 
 max_count = 4000
 rm_count = min(max_count, 64, math.floor(max_count * 0.2))
@@ -289,6 +292,12 @@ def beam_search_generate(
     return candidates[:top_k]
 
 
+class li(TypedDict):
+    ppy: List[PinyinAndKey]
+    tkids: List[int]
+    next_ids: Set[int]
+
+
 def single_ci(pinyin_input: PinyinL) -> Result:
     if not pinyin_input or not pinyin_input[0]:
         return {"candidates": []}
@@ -333,45 +342,75 @@ def single_ci(pinyin_input: PinyinL) -> Result:
 
         if not (token_pinyin_dy):
             continue
-        token_pinyin: List[str] = []
-        preedit_pinyin: List[str] = []
-        pyeq = True
-        if len(pinyin_input) >= len(token_pinyin_dy):
-            for [i, ps] in enumerate(token_pinyin_dy):
-                input_posi = pinyin_input[i]
-                zi_posi = ps
-                find_zi_eq = False
-                for p in zi_posi:
-                    for x in input_posi:
-                        if p == x["py"]:
-                            find_zi_eq = True
-                            token_pinyin.append(p)
-                            preedit_pinyin.append(x["preeditShow"])
-                            break
-                    if find_zi_eq:
-                        break
-                if find_zi_eq == False:
-                    pyeq = False
-                    break
-        else:
-            pyeq = False
+        token_pinyin = pinyin_in_pinyin(pinyin_input, token_pinyin_dy)
 
-        if pyeq:
-            if token != token_pinyin[0]:
+        if token_pinyin != False:
+            if token != token_pinyin[0]["py"]:
                 rmpy = list(
                     map(lambda x: x[0]["key"], pinyin_input[len(token_pinyin) :])
                 )
-                matchpy = list(
-                    map(lambda x: x[0]["key"], pinyin_input[: len(token_pinyin)])
-                )
+
+                if rmpy and (token_id in y用户词):
+                    # 尝试匹配用户词典
+                    lis: List[li] = [
+                        li(
+                            ppy=token_pinyin.copy(),
+                            next_ids=y用户词.get(token_id, set()),
+                            tkids=[token_id],
+                        )
+                    ]
+                    final_lis: List[li] = []
+                    for _i in range(4):
+                        nl: List[li] = []
+                        for item in lis:
+                            if len(item["next_ids"]) == 0:
+                                final_lis.append(item)
+                            for i in item["next_ids"]:
+                                r = pinyin_input[len(item["ppy"]) :]
+                                p = token_pinyin_map.get(i, [])
+                                m = pinyin_in_pinyin(r, p)
+                                if m:
+                                    nitem = li(
+                                        ppy=item["ppy"] + m,
+                                        next_ids=y用户词.get(i, set()),
+                                        tkids=item["tkids"] + [i],
+                                    )
+                                    nl.append(nitem)
+                        lis = nl
+                    print(final_lis)
+                    for i in final_lis:
+                        rmpy1 = list(
+                            map(lambda x: x[0]["key"], pinyin_input[len(i["ppy"]) :])
+                        )
+                        c.append(
+                            {
+                                "pinyin": list(map(lambda x: x["py"], i["ppy"])),
+                                "score": float(token_prob),
+                                "word": llm.detokenize(i["tkids"]).decode(),
+                                "preedit": " ".join(
+                                    list(map(lambda x: x["preeditShow"], i["ppy"]))
+                                )
+                                + (" " if rmpy1 else ""),
+                                "remainkeys": rmpy1,
+                                "consumedkeys": len(
+                                    "".join(list(map(lambda x: x["key"], i["ppy"])))
+                                ),
+                            }
+                        )
+
                 c.append(
                     {
-                        "pinyin": token_pinyin,
+                        "pinyin": list(map(lambda x: x["py"], token_pinyin)),
                         "score": float(token_prob),
                         "word": token,
                         "remainkeys": rmpy,
-                        "preedit": " ".join(preedit_pinyin) + (" " if rmpy else ""),
-                        "consumedkeys": len("".join(matchpy)),
+                        "preedit": " ".join(
+                            map(lambda x: x["preeditShow"], token_pinyin)
+                        )
+                        + (" " if rmpy else ""),
+                        "consumedkeys": len(
+                            "".join(list(map(lambda x: x["key"], token_pinyin)))
+                        ),
                     }
                 )
     c.sort(key=lambda x: len(x["word"]), reverse=True)
@@ -386,6 +425,30 @@ def single_ci(pinyin_input: PinyinL) -> Result:
     if not c:
         print("is empty")
     return {"candidates": c}
+
+
+def pinyin_in_pinyin(pinyin_input: PinyinL, token_pinyin_dy: List[List[str]]):
+    token_pinyin: List[PinyinAndKey] = []
+    pyeq = True
+    if len(pinyin_input) >= len(token_pinyin_dy):
+        for [i, ps] in enumerate(token_pinyin_dy):
+            input_posi = pinyin_input[i]
+            zi_posi = ps
+            find_zi_eq = False
+            for p in zi_posi:
+                for x in input_posi:
+                    if p == x["py"]:
+                        find_zi_eq = True
+                        token_pinyin.append(x)
+                        break
+                if find_zi_eq:
+                    break
+            if find_zi_eq == False:
+                pyeq = False
+                break
+        return token_pinyin if pyeq else False
+    else:
+        return False
 
 
 def commit(text: str, update=False, new=True):
@@ -411,6 +474,9 @@ def commit(text: str, update=False, new=True):
 
     if not new_text:
         return user_context
+
+    # todo 知道最后选了哪个token
+    add_user_word(text)
 
     user_context.append(new_text)
 
@@ -473,6 +539,18 @@ def add_to_beam(
     if len(next_beam) > limit:
         next_beam.pop()
     return True
+
+
+def add_user_word(w: str, pre_id: int | None = None):
+    ts = llm.tokenize(w.encode())
+    if len(ts) > 1:
+        for [i, t] in enumerate(ts):
+            pre = ts[i - 1] if i != 0 else pre_id
+            if pre != None:
+                s = y用户词.get(pre, set())
+                s.add(t)
+                y用户词[pre] = s
+        print("添加用户词", w)
 
 
 def try_trim_context():
