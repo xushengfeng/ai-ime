@@ -10,10 +10,11 @@ class PinyinAndKey(TypedDict):
     isAllMatch: bool
 
 
+# fmt:off
 PinyinL = List[  # 拆分后的序列
     List[PinyinAndKey]  # 多选，比如模糊音，半个拼音等
 ]
-
+# fmt:on
 
 pinyin_k_l = sorted(
     list(filter(lambda x: len(x) > 1, generate_pinyin())),
@@ -21,15 +22,19 @@ pinyin_k_l = sorted(
     reverse=True,
 )
 
-shuangpin_map = generate_shuang_pinyin(pinyin_k_l)
+sp_map = generate_shuang_pinyin(pinyin_k_l)
 
 
 # 按键转拼音
-def keys_to_pinyin(keys: str) -> PinyinL:
+def keys_to_pinyin(keys: str, shuangpin=True) -> PinyinL:
     # 示例：将按键直接映射为拼音（实际可根据需求扩展）
     # 比如双拼、模糊
     l: PinyinL = []
     k = keys
+    if shuangpin != True:
+        shuangpin_map = {}
+    else:
+        shuangpin_map = sp_map
 
     def try_match(k: str):
         has = False
@@ -85,5 +90,4 @@ def keys_to_pinyin(keys: str) -> PinyinL:
                 k = k[len(xk) :]
                 if ll:
                     break
-    print(l)
     return l

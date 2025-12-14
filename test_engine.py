@@ -22,7 +22,7 @@ def test_text_offset(test_text: List[str]):
         py = "".join(lazy_pinyin(src_t))
 
         while len(py) > 0:
-            pinyin_input = keys_to_pinyin(py)
+            pinyin_input = keys_to_pinyin(py, shuangpin=False)
             candidates = single_ci(pinyin_input)
             has = False
 
@@ -57,7 +57,7 @@ if __name__ == "__main__":
     clear_commit()
     commit("小明是女的，")
     c = single_ci(keys_to_pinyin("ta"))
-    print(c)
+    print(c["candidates"][:4])
 
     clear_commit()
     test_text_offset(
@@ -69,4 +69,4 @@ if __name__ == "__main__":
     )
     commit("小明是女的，")
     c = single_ci(keys_to_pinyin("ta"))
-    print(c)
+    print(c["candidates"][:4])
