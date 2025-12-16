@@ -141,7 +141,7 @@ export function single_ci(pinyin_input: PinyinL): { candidates: Candidate[] } {
 		});
 	}
 
-	c.sort((a, b) => b.word.length - a.word.length);
+	c.sort((a, b) => b.pinyin.length - a.pinyin.length);
 
 	console.log("token长度", sequence.contextTokens.length);
 
