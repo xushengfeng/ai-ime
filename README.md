@@ -4,17 +4,21 @@ llm 驱动的输入法。目前支持拼音。
 
 llm 常用的文本生成方式是自回归，也就是预测下一个词（token）的所有可能，然后通过某种方式采样选择某个可能，追加到模型输入，然后再次预测。这个项目，把词可能的选择采样交给了用户拼音，利用用户拼音来辅助采样。
 
-使用小型大模型 Qwen3-0.6B-IQ4_XS ，兼顾速度和联想能力，打字时速度和普通引擎基本无异
+使用小型大模型 Qwen3-0.6B-IQ4_XS ，兼顾速度和联想能力，打字时速度和普通引擎基本无异。
+
+python 版本的见其他分支，此版本用 ts 重写。
 
 ## 运行
+
+需要有 deno.js 运行时，见[官网](https://deno.com/)
+
+下载本项目，建议通过命令`git clone https://github.com/xushengfeng/lime`，后续可以获取更新，当然也可以下载压缩包
 
 ### 安装依赖
 
 ```shell
-uv sync
+deno install
 ```
-
-如果要安装 cpu 版本的运行时，需要在命令前添加`CMAKE_ARGS="-DGGML_BLAS=ON -DGGML_BLAS_VENDOR=OpenBLAS"`
 
 ### 下载模型
 
@@ -22,18 +26,20 @@ uv sync
 git clone https://www.modelscope.cn/unsloth/Qwen3-0.6B-GGUF.git
 ```
 
+模型文件夹的位置和项目应该是同级的，当然你也可以修改代码
+
 ### 开启服务器
 
 ```shell
-uv run server.py
+deno serve -A --port 5000 server.ts
 ```
 
-默认启用自然码双拼，`server.py`里把`keys_to_pinyin`函数都加上`shuangpin=False`参数即可关闭
+默认启用自然码双拼，`server.ts`里把`pinyinConfig`的`shuangpin`改成`false`即可关闭
 
 创建密钥，一定程度上防止被滥用或隐私泄露
 
 ```shell
-uv run key.py
+deno run -A key.ts
 ```
 
 ## 作为输入法
@@ -44,7 +50,7 @@ uv run key.py
 
 安装 luasocket（见下面）。
 
-创建密钥`uv run key.py`，只需要创建一次，把输出的密钥改写在`llm_pinyin.lua`的`key`变量里面。
+创建密钥`deno run -A key.ts`，只需要创建一次，把输出的密钥改写在`llm_pinyin.lua`的`key`变量里面。
 
 开启服务器，切换到 llm 拼音输入法即可使用。
 
@@ -114,10 +120,4 @@ curl --request POST \
   --data '{
   "text": "你好世界"
 }'
-```
-
-### 仅测试
-
-```shell
-uv run test_engine.py
 ```
