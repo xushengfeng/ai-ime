@@ -23,9 +23,18 @@
       "integrity": "972a634fd5bc34b242024402972cd5143eac68d8dffaca5eaa4dba30ce17b027"
     }
   },
+  "redirects": {
+    "https://unpkg.com/htm?module": "https://unpkg.com/htm@3.1.1/dist/htm.module.js?module",
+    "https://unpkg.com/preact?module": "https://unpkg.com/preact@10.28.0/dist/preact.module.js?module"
+  },
+  "remote": {
+    "https://unpkg.com/htm@3.1.1/dist/htm.module.js?module": "ab33dd3f38059b9be4d5f5350128eefb2356639c4e0bbe9d9e8b3ba75847e9e4",
+    "https://unpkg.com/preact@10.28.0/dist/preact.module.js?module": "a9f9b70a175bccb2fba78feafe3b5ecd8ba0f9654d8cd96edf3ba5c3da450e69"
+  },
   "workspace": {
     "packageJson": {
       "dependencies": [
+        "npm:@types/node@^25.0.2",
         "npm:hono@^4.11.1",
         "npm:node-llama-cpp@^3.14.5",
         "npm:pinyin-pro@^3.27.0"

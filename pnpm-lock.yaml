@@ -17,6 +17,10 @@ importers:
       pinyin-pro:
         specifier: ^3.27.0
         version: 3.27.0
+    devDependencies:
+      '@types/node':
+        specifier: ^25.0.2
+        version: 25.0.2
 
 packages:
 
@@ -283,6 +287,9 @@ packages:
 
   '@types/aws-lambda@8.10.159':
     resolution: {integrity: sha512-SAP22WSGNN12OQ8PlCzGzRCZ7QDCwI85dQZbmpz7+mAk+L7j+wI7qnvmdKh+o7A5LaOp6QnOZ2NJphAZQTTHQg==}
+
+  '@types/node@25.0.2':
+    resolution: {integrity: sha512-gWEkeiyYE4vqjON/+Obqcoeffmk0NF15WSBwSs7zwVA2bAbTaE0SJ7P0WNGoJn8uE7fiaV5a7dKYIJriEqOrmA==}
 
   ansi-escapes@6.2.1:
     resolution: {integrity: sha512-4nJ3yixlEthEJ9Rk4vPcdBRkZvQZlYyu8j4/Mqz5sgIkddmEnH2Yj2ZrnP9S3tQOvSNRUIgVNF/1yPpRAGNRig==}
@@ -815,6 +822,9 @@ packages:
     resolution: {integrity: sha512-/m8M+2BJUpoJdgAHoG+baCwBT+tf2VraSfkBgl0Y00qIWt41DJ8R5B8nsEw0I58YwF5IZH6z24/2TobDKnqSWw==}
     engines: {node: '>=12'}
 
+  undici-types@7.16.0:
+    resolution: {integrity: sha512-Zz+aZWSj8LE6zoxD+xrjh4VfkIG8Ya6LvYkZqtUQGJPZjYl53ypCaUwWqo7eI0x66KBGeRo+mlBEkMSeSZ38Nw==}
+
   universal-github-app-jwt@2.2.2:
     resolution: {integrity: sha512-dcmbeSrOdTnsjGjUfAlqNDJrhxXizjAz94ija9Qw8YkZ1uu0d+GoZzyH+Jb9tIIqvGsadUfwg+22k5aDqqwzbw==}
 
@@ -1108,6 +1118,10 @@ snapshots:
   '@tinyhttp/content-disposition@2.2.2': {}
 
   '@types/aws-lambda@8.10.159': {}
+
+  '@types/node@25.0.2':
+    dependencies:
+      undici-types: 7.16.0
 
   ansi-escapes@6.2.1: {}
 
@@ -1658,6 +1672,8 @@ snapshots:
       yallist: 4.0.0
 
   toad-cache@3.7.0: {}
+
+  undici-types@7.16.0: {}
 
   universal-github-app-jwt@2.2.2: {}
 
