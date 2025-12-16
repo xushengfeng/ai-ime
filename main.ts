@@ -14,6 +14,10 @@ type Candidate = {
 	consumedkeys: number;
 };
 
+export type Result = {
+	candidates: Candidate[];
+};
+
 type UserData = {
 	words: Record<number, Array<Array<number>>>;
 	context: Array<string>;
@@ -96,9 +100,7 @@ function add_user_word(w: string) {
 	return true;
 }
 
-export async function single_ci(pinyin_input: PinyinL): Promise<{
-	candidates: Candidate[];
-}> {
+export async function single_ci(pinyin_input: PinyinL): Promise<Result> {
 	if (pinyin_input.length === 0 || pinyin_input[0].length === 0) {
 		return { candidates: [] };
 	}
