@@ -23,6 +23,10 @@ type UserData = {
 	context: Array<string>;
 };
 
+type ThinkOption = {
+	userWord: boolean;
+};
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const token_pinyin_map: Map<number, Array<Array<string>>> = new Map();
@@ -123,7 +127,10 @@ function add_user_word(w: string) {
 	return true;
 }
 
-export async function single_ci(pinyin_input: PinyinL): Promise<Result> {
+export async function single_ci(
+	pinyin_input: PinyinL,
+	op?: ThinkOption,
+): Promise<Result> {
 	if (pinyin_input.length === 0 || pinyin_input[0].length === 0) {
 		return { candidates: [] };
 	}
@@ -132,34 +139,59 @@ export async function single_ci(pinyin_input: PinyinL): Promise<Result> {
 		return { candidates: [] };
 	}
 
-	const ftokenid = new Set<number>();
-	for (const firstPinyin of pinyin_input[0]) {
-		const s = first_pinyin_token.get(firstPinyin.py) ?? new Set();
-		for (const tokenid of s) ftokenid.add(tokenid);
-	}
-
 	const c: Candidate[] = [];
 
 	await modelEvalLock.acquire();
 
-	for (const [token_id, token_prob] of last_result) {
-		if (!ftokenid.has(token_id)) continue;
-		const token = model.detokenize([token_id]);
-		if (!token) continue;
-		if (["\t", "\n", " "].includes(token[0])) continue;
+	function filterByPinyin(
+		pinyin_input: PinyinL,
+		last_result: Map<Token, number>,
+	) {
+		const new_last_result = new Map<
+			Token,
+			{ py: PinyinAndKey[]; prob: number; token: string }
+		>();
+		let scoreSum = 0;
+		const ftokenid = new Set<number>();
+		for (const firstPinyin of pinyin_input[0]) {
+			const s = first_pinyin_token.get(firstPinyin.py) ?? new Set();
+			for (const tokenid of s) ftokenid.add(tokenid);
+		}
 
-		const token_pinyin_dy = token_pinyin_map.get(token_id);
+		for (const [token_id, token_prob] of last_result) {
+			if (!ftokenid.has(token_id)) continue;
+			const token = model.detokenize([token_id]);
+			if (!token) continue;
+			if (["\t", "\n", " "].includes(token[0])) continue;
 
-		if (!token_pinyin_dy) continue;
+			const token_pinyin_dy = token_pinyin_map.get(token_id);
 
-		const token_pinyin = pinyin_in_pinyin(pinyin_input, token_pinyin_dy);
-		if (!token_pinyin) continue;
-		if (token === token_pinyin[0].py) continue; // 排除部分英文
+			if (!token_pinyin_dy) continue;
 
+			const token_pinyin = pinyin_in_pinyin(pinyin_input, token_pinyin_dy);
+			if (!token_pinyin) continue;
+			if (token === token_pinyin[0].py) continue; // 排除部分英文
+			new_last_result.set(token_id, {
+				py: token_pinyin,
+				prob: token_prob,
+				token: model.detokenize([token_id]),
+			});
+			scoreSum += token_prob;
+		}
+		for (const v of new_last_result.values()) {
+			v.prob /= scoreSum;
+		}
+		return new_last_result;
+	}
+	const new_last_result = filterByPinyin(pinyin_input, last_result);
+
+	for (const [
+		token_id,
+		{ py: token_pinyin, prob: token_prob },
+	] of new_last_result) {
 		const rmpy = pinyin_input.slice(token_pinyin.length).map((v) => v[0].py);
 
-		if (rmpy.length > 0 && y用户词.has(token_id)) {
-			// todo 用户词
+		if (op?.userWord && rmpy.length > 0 && y用户词.has(token_id)) {
 			type li = {
 				ppy: PinyinAndKey[];
 				tkids: Token[];
@@ -210,6 +242,81 @@ export async function single_ci(pinyin_input: PinyinL): Promise<Result> {
 					remainkeys: rmpy,
 					consumedkeys: i.ppy.map((i) => i.key).join("").length,
 				});
+			}
+		}
+	}
+	let thinkCount = 0;
+	for (const [
+		token_id,
+		{ py: token_pinyin, prob: token_prob, token },
+	] of new_last_result) {
+		const rmpy = pinyin_input.slice(token_pinyin.length).map((v) => v[0].py);
+		const _lastTokenId = sequence.contextTokens.at(-1);
+		if (rmpy.length > 0) {
+			if (token_prob > 0.7) {
+				if (thinkCount > 1) break;
+				thinkCount++;
+				let prob = token_prob;
+				let rmpyx = pinyin_input.slice(token_pinyin.length);
+				const tklppy: PinyinAndKey[] = [...token_pinyin];
+				const tkl: Token[] = [token_id];
+				let evalCount = 0;
+				// todo 拼音序列改变后才erase，可以复用一些计算，现在总是重新计算，效率低
+				for (let _i = 0; _i < Math.min(rmpyx.length, 4); _i++) {
+					const next = await sequence.controlledEvaluate([
+						[
+							tkl.at(-1)!,
+							{
+								generateNext: {
+									probabilities: true,
+								},
+							},
+						],
+					]);
+					evalCount++;
+					const f = filterByPinyin(
+						rmpyx,
+						next.at(-1)?.next.probabilities || new Map(),
+					);
+					if (f.size > 0) {
+						const first = f.entries().next().value;
+						if (first) {
+							if (first[1].prob < 0.8) {
+								break;
+							}
+							prob *= first[1].prob;
+							tkl.push(first[0]);
+							const tp = first[1];
+							tklppy.push(...tp.py);
+							rmpyx = pinyin_input.slice(tklppy.length);
+							if (rmpyx.length === 0) {
+								break;
+							}
+						}
+					}
+				}
+				await sequence.eraseContextTokenRanges([
+					{
+						start: sequence.contextTokens.length - evalCount,
+						end: sequence.contextTokens.length,
+					},
+				]);
+				if (sequence.contextTokens.at(-1) !== _lastTokenId) {
+					console.error("erase error");
+				}
+
+				if (tkl.length > 1) {
+					c.push({
+						pinyin: tklppy.map((v) => v.py),
+						score: prob,
+						word: model.detokenize(tkl),
+						remainkeys: rmpyx.map((v) => v[0].py),
+						preedit:
+							tklppy.map((v) => v.preeditShow).join(" ") +
+							(rmpyx.length ? " " : ""),
+						consumedkeys: tklppy.map((v) => v.key).join("").length,
+					});
+				}
 			}
 		}
 
