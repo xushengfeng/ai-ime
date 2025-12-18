@@ -29,7 +29,7 @@ function getDefaultOllamaPath(): string {
 
 function getOllamaDir(basePath: string) {
 	return {
-		manifests: join(basePath, "manifests/registry.ollama.ai/library/"),
+		manifests: join(basePath, "manifests/registry.ollama.ai/"),
 		models: join(basePath, "blobs/"),
 	};
 }
@@ -40,12 +40,19 @@ export function listOllamaModels(op?: OllamaOptions) {
 	try {
 		const manifests = Deno.readDirSync(dirs.manifests);
 		const models: string[] = [];
-		for (const modelName of manifests) {
-			if (modelName.isDirectory) {
-				for (const modelXinghao of Deno.readDirSync(
-					join(dirs.manifests, modelName.name),
-				)) {
-					models.push(`${modelName.name}:${modelXinghao.name}`);
+		for (const userNameSpace of manifests) {
+			const modelsDir = Deno.readDirSync(
+				join(dirs.manifests, userNameSpace.name),
+			);
+			for (const modelName of modelsDir) {
+				if (modelName.isDirectory) {
+					for (const modelXinghao of Deno.readDirSync(
+						join(dirs.manifests, userNameSpace.name, modelName.name),
+					)) {
+						models.push(
+							`${userNameSpace.name === "library" ? "" : `${userNameSpace.name}/`}${modelName.name}:${modelXinghao.name}`,
+						);
+					}
 				}
 			}
 		}
@@ -59,7 +66,12 @@ export function listOllamaModels(op?: OllamaOptions) {
 export function getOllamaModel(model: string, op?: OllamaOptions) {
 	const basePath = op?.ollamaPath || getDefaultOllamaPath();
 	const dirs = getOllamaDir(basePath);
-	const manifestPath = join(dirs.manifests, model.replace(":", "/"));
+	const manifestPath = join(
+		dirs.manifests,
+		model.includes("/")
+			? model.replace(":", "/")
+			: `library/${model.replace(":", "/")}`,
+	);
 	try {
 		const manifestData = JSON.parse(Deno.readTextFileSync(manifestPath));
 		const layer = manifestData.layers.find(
