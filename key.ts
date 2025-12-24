@@ -1,7 +1,7 @@
-import { encodeBase64Url } from "jsr:@std/encoding/base64url";
-import { parseArgs } from "jsr:@std/cli/parse-args";
-import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { parseArgs } from "@std/cli/parse-args";
+import { encodeBase64Url } from "@std/encoding/base64url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const KEY_FILE = path.join(__dirname, "key.txt");

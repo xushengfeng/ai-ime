@@ -1,6 +1,6 @@
-import { assertEquals } from "jsr:@std/assert@1.0.16/equals";
-import { ziid_in_ziid } from "../ziind_in_ziind.ts";
+import { assertEquals } from "@std/assert/equals";
 import type { ZiIndAndKey } from "../../key_map/zi_ind.ts";
+import { ziid_in_ziid } from "../ziind_in_ziind.ts";
 
 Deno.test("拼音匹配", () => {
 	const p1: ZiIndAndKey[] = [

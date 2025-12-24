@@ -1,9 +1,9 @@
-import { assertEquals } from "jsr:@std/assert@1.0.16";
-import { spilt_pinyin } from "../split_pinyin.ts";
+import { assertEquals } from "@std/assert";
+import { assert } from "@std/assert/assert";
 import { generate_fuzzy_pinyin } from "../fuzzy_pinyin.ts";
-import { keys_to_pinyin } from "../keys_to_pinyin.ts";
-import { assert } from "jsr:@std/assert@1.0.16/assert";
 import { load_pinyin } from "../gen_zi_pinyin.ts";
+import { keys_to_pinyin } from "../keys_to_pinyin.ts";
+import { spilt_pinyin } from "../split_pinyin.ts";
 
 Deno.test("split pinyin", () => {
 	assertEquals(spilt_pinyin("ni"), ["n", "i"]);

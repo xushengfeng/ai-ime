@@ -1,4 +1,4 @@
-import { assertEquals } from "jsr:@std/assert@1.0.16";
+import { assertEquals } from "@std/assert";
 import { generate_pinyin } from "../all_pinyin.ts";
 import { generate_shuang_pinyin } from "../shuangpin.ts";
 

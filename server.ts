@@ -3,11 +3,11 @@ import { bearerAuth } from "hono/bearer-auth";
 import { HTTPException } from "hono/http-exception";
 import { logger } from "hono/logger";
 import { verifyKey } from "./key.ts";
+import { load_pinyin } from "./key_map/pinyin/gen_zi_pinyin.ts";
 import {
 	keys_to_pinyin,
 	type PinyinToKeyOptions,
 } from "./key_map/pinyin/keys_to_pinyin.ts";
-import { load_pinyin } from "./key_map/pinyin/gen_zi_pinyin.ts";
 import { getUserData, initLIME } from "./main.ts";
 
 const { single_ci, commit } = await initLIME({ ziInd: load_pinyin() });

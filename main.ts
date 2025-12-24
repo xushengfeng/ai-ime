@@ -1,5 +1,5 @@
-import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import {
 	getLlama,
 	type LlamaContext,
@@ -41,8 +41,9 @@ const user_context: string[] = [];
 const last_context_data = { context: "" };
 const y用户词 = new Map<number, Array<Array<number>>>();
 
-const max_count = 4000;
-const rm_count = Math.min(max_count, 64, Math.floor(max_count * 0.2));
+// 似乎框架的移除token做得不错，就不自己实现了
+// const max_count = 4000;
+// const rm_count = Math.min(max_count, 64, Math.floor(max_count * 0.2));
 
 let last_result: Map<Token, number> | undefined;
 
@@ -399,6 +400,7 @@ class LIME {
 					for (let _i = 0; _i < Math.min(rmpyx.length, 4); _i++) {
 						const next = await this.sequence.controlledEvaluate([
 							[
+								// biome-ignore lint/style/noNonNullAssertion: 上面初始化已经保证了元素
 								tkl.at(-1)!,
 								{
 									generateNext: {
@@ -497,10 +499,14 @@ class LIME {
 	init_ctx = async () => {
 		const prompt = get_context();
 		const tokens = this.model.tokenizer(prompt);
+		const [pre, last] = [tokens.slice(0, -1), tokens.at(-1)];
+		if (last === undefined) {
+			throw "初始token不够";
+		}
 		const x = await this.sequence.controlledEvaluate([
-			...tokens.slice(0, -1),
+			...pre,
 			[
-				tokens.at(-1)!,
+				last,
 				{
 					generateNext: {
 						probabilities: true,

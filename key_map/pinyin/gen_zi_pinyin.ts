@@ -1,5 +1,5 @@
-import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { get_dict } from "../rime_dict.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));

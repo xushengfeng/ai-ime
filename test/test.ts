@@ -1,8 +1,8 @@
+import { assert } from "@std/assert";
 import { pinyin } from "pinyin-pro";
+import { load_pinyin } from "../key_map/pinyin/gen_zi_pinyin.ts";
 import { keys_to_pinyin } from "../key_map/pinyin/keys_to_pinyin.ts";
 import { initLIME } from "../main.ts";
-import { assert } from "@std/assert";
-import { load_pinyin } from "../key_map/pinyin/gen_zi_pinyin.ts";
 
 const { commit, single_ci, model } = await initLIME({ ziInd: load_pinyin() });
 

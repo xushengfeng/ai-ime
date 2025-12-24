@@ -1,7 +1,7 @@
-import { assertEquals } from "jsr:@std/assert@1.0.16";
+import { assertEquals } from "@std/assert";
+import { load_pinyin } from "../key_map/pinyin/gen_zi_pinyin.ts";
 import { keys_to_pinyin } from "../key_map/pinyin/keys_to_pinyin.ts";
 import { initLIME } from "../main.ts";
-import { load_pinyin } from "../key_map/pinyin/gen_zi_pinyin.ts";
 
 const { commit, single_ci } = await initLIME({ ziInd: load_pinyin() });
 
